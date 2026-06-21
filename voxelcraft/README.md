@@ -24,6 +24,10 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - **Gravidade**, **colisão** (não atravessa blocos) e **pulo** (`Espaço`).
 - **Modo voo** alternável com `F` (ainda com colisão).
 
+**Feature 004 — Texturas**
+- **Atlas procedural** (gerado em runtime, sem arquivos de imagem no repo).
+- Visual pixelado (filtro nearest); grama com topo e laterais distintos.
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { BLOCK, BLOCK_COLOR, isSolid } from '../blocks.js';
+import { BLOCK, isSolid } from '../blocks.js';
 import { makeNoise2D } from './noise.js';
+import { tileFor, uvForTile } from './atlas.js';
 
 // --- Constantes canônicas do mundo (fonte única, citadas na constitution) ---
 export const CHUNK_SIZE = 16; // blocos por lado em X e Z, por chunk
@@ -81,26 +82,33 @@ export function generateWorld(seed) {
 // Tabela de faces de um cubo unitário (winding correto para THREE FrontSide).
 // Baseada na convenção clássica de voxel rendering em WebGL.
 const FACES = [
-  { dir: [-1, 0, 0], shade: 0.8, corners: [[0, 1, 0], [0, 0, 0], [0, 1, 1], [0, 0, 1]] }, // -x
-  { dir: [1, 0, 0], shade: 0.8, corners: [[1, 1, 1], [1, 0, 1], [1, 1, 0], [1, 0, 0]] }, // +x
-  { dir: [0, -1, 0], shade: 0.55, corners: [[1, 0, 1], [0, 0, 1], [1, 0, 0], [0, 0, 0]] }, // -y
-  { dir: [0, 1, 0], shade: 1.0, corners: [[0, 1, 1], [1, 1, 1], [0, 1, 0], [1, 1, 0]] }, // +y (topo)
-  { dir: [0, 0, -1], shade: 0.7, corners: [[1, 0, 0], [0, 0, 0], [1, 1, 0], [0, 1, 0]] }, // -z
-  { dir: [0, 0, 1], shade: 0.7, corners: [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]] }, // +z
+  { dir: [-1, 0, 0], shade: 0.8, name: 'side', corners: [[0, 1, 0], [0, 0, 0], [0, 1, 1], [0, 0, 1]] }, // -x
+  { dir: [1, 0, 0], shade: 0.8, name: 'side', corners: [[1, 1, 1], [1, 0, 1], [1, 1, 0], [1, 0, 0]] }, // +x
+  { dir: [0, -1, 0], shade: 0.55, name: 'bottom', corners: [[1, 0, 1], [0, 0, 1], [1, 0, 0], [0, 0, 0]] }, // -y
+  { dir: [0, 1, 0], shade: 1.0, name: 'top', corners: [[0, 1, 1], [1, 1, 1], [0, 1, 0], [1, 1, 0]] }, // +y (topo)
+  { dir: [0, 0, -1], shade: 0.7, name: 'side', corners: [[1, 0, 0], [0, 0, 0], [1, 1, 0], [0, 1, 0]] }, // -z
+  { dir: [0, 0, 1], shade: 0.7, name: 'side', corners: [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]] }, // +z
 ];
+
+// UV de cada corner dentro do tile (padrão consistente: 0–1 e 0–2 são arestas).
+function cornerUV(k, rect) {
+  return [k === 0 || k === 2 ? rect.u0 : rect.u1, k === 0 || k === 1 ? rect.v0 : rect.v1];
+}
 
 /**
  * Constrói UMA malha do mundo inteiro usando face culling: só emite as faces
- * cujo vizinho é AIR. Cores por vértice, com sombreamento por direção da face.
+ * cujo vizinho é AIR. Emite UVs (atlas) + vertex color = sombreamento por face.
  * @param {VoxelData} voxels
+ * @param {THREE.Material} [material] material a usar (browser injeta com textura);
+ *   sem ele, cai num default só-vertexColors (usado em teste, nunca renderizado).
  * @returns {THREE.Mesh}
  */
-export function buildWorldMesh(voxels) {
+export function buildWorldMesh(voxels, material) {
   const positions = [];
   const normals = [];
   const colors = [];
+  const uvs = [];
   const indices = [];
-  const color = new THREE.Color();
 
   for (let y = 0; y < SIZE_Y; y++) {
     for (let z = 0; z < SIZE_Z; z++) {
@@ -108,23 +116,25 @@ export function buildWorldMesh(voxels) {
         const block = voxels.get(x, y, z);
         if (!isSolid(block)) continue;
 
-        const hex = BLOCK_COLOR[block] ?? 0xffffff;
-
         for (const face of FACES) {
           const [dx, dy, dz] = face.dir;
           if (isSolid(voxels.get(x + dx, y + dy, z + dz))) continue; // face oculta
 
           const ndx = positions.length / 3;
-          color.set(hex).multiplyScalar(face.shade);
+          const s = face.shade; // vertex color = sombreamento (cinza) que multiplica a textura
+          const rect = uvForTile(tileFor(block, face.name));
 
-          for (const [cx, cy, cz] of face.corners) {
+          for (let k = 0; k < 4; k++) {
+            const [cx, cy, cz] = face.corners[k];
             positions.push(
               x + cx - voxels.offsetX,
               y + cy,
               z + cz - voxels.offsetZ
             );
             normals.push(dx, dy, dz);
-            colors.push(color.r, color.g, color.b);
+            colors.push(s, s, s);
+            const [u, vv] = cornerUV(k, rect);
+            uvs.push(u, vv);
           }
           indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
         }
@@ -136,16 +146,15 @@ export function buildWorldMesh(voxels) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeBoundingSphere();
 
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.95,
-    metalness: 0.0,
-  });
+  const mat =
+    material ||
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.0 });
 
-  const mesh = new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(geometry, mat);
   mesh.name = 'world';
   return mesh;
 }

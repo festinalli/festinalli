@@ -39,8 +39,8 @@ Quanto o agente corre sozinho entre pausas humanas. Definido por você:
 | 001 | Mundo voxel + câmera 1ª pessoa            | ✅ Feito (validação manual pendente) |
 | 002 | Quebrar / colocar blocos (raycast)        | ✅ Feito (validação manual pendente) |
 | 003 | Gravidade, colisão e pulo                 | ✅ Feito (validação manual pendente) |
-| 004 | Texturas (atlas) no lugar de cores        | 🔨 Em progresso |
-| 005 | Salvar / carregar mundo (localStorage)    | ⏳ Backlog      |
+| 004 | Texturas (atlas) no lugar de cores        | ✅ Feito (validação manual pendente) |
+| 005 | Salvar / carregar mundo (localStorage)    | 🔨 Em progresso |
 | 006 | Streaming de chunks (mundo "infinito")    | ⏳ Backlog      |
 | 007 | Hotbar / inventário                       | ⏳ Backlog      |
 

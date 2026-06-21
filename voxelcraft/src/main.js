@@ -3,6 +3,7 @@ import { generateWorld, buildWorldMesh, spawnSurfaceY } from './world/world.js';
 import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
+import { makeAtlasTexture } from './world/atlas.js';
 import { BLOCK_COLOR } from './blocks.js';
 
 const WORLD_SEED = 1337; // seed fixa: mundo determinístico (constitution)
@@ -36,15 +37,23 @@ scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x4a5a3a, 0.7));
 scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
 // --- Mundo ---
+const atlas = makeAtlasTexture();
+const worldMaterial = new THREE.MeshStandardMaterial({
+  map: atlas,
+  vertexColors: true, // sombreamento por face multiplica a textura
+  roughness: 0.95,
+  metalness: 0.0,
+});
+
 const voxels = generateWorld(WORLD_SEED);
-let worldMesh = buildWorldMesh(voxels);
+let worldMesh = buildWorldMesh(voxels, worldMaterial);
 scene.add(worldMesh);
 
-// Reconstrói a malha inteira após uma edição (ver ADR 0003).
+// Reconstrói a malha inteira após uma edição (ver ADR 0003). Reusa o material.
 function rebuildWorld() {
   scene.remove(worldMesh);
   worldMesh.geometry.dispose();
-  worldMesh = buildWorldMesh(voxels);
+  worldMesh = buildWorldMesh(voxels, worldMaterial);
   scene.add(worldMesh);
 }
 
