@@ -1,0 +1,75 @@
+# 🟩 Voxelcraft
+
+Um jogo estilo **Minecraft** (mundo de blocos / voxels) que roda no navegador.
+Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma spec.
+
+> Projeto-demo dentro do repositório de perfil. O jogo vive nesta pasta
+> (`voxelcraft/`); o `README.md` da raiz do repositório é o currículo do dono e
+> não é tocado por este projeto.
+
+## ✨ O que já tem (feature 001)
+
+- Terreno voxel **procedural e determinístico** (mesma seed ⇒ mesmo mundo).
+- 3+ tipos de bloco por cor: grama, terra, pedra (e areia nas partes baixas).
+- Câmera em **primeira pessoa** com olhar pelo mouse e **voo livre**.
+- Render otimizado por **face culling** (só desenha faces expostas).
+
+## 🎮 Controles
+
+| Ação            | Tecla                |
+|-----------------|----------------------|
+| Olhar           | Mouse                |
+| Mover           | `W` `A` `S` `D`      |
+| Subir / Descer  | `Espaço` / `Shift`   |
+| Correr          | `Ctrl`               |
+| Pausar          | `Esc`                |
+
+Clique na tela inicial para capturar o mouse e começar.
+
+## 🚀 Como rodar
+
+```bash
+cd voxelcraft
+npm install
+npm run dev      # abre em http://localhost:5173
+```
+
+Build estático (publicável no GitHub Pages):
+
+```bash
+npm run build    # gera dist/
+npm run preview  # serve o build localmente
+```
+
+## 🧱 Stack
+
+JavaScript (ES Modules) · [Three.js](https://threejs.org/) · [Vite](https://vitejs.dev/).
+Three.js é a única dependência de runtime. Veja `.specs/constitution.md`.
+
+## 🗂️ Estrutura (Spec-Driven Development)
+
+```
+voxelcraft/
+├── CLAUDE.md            # contexto do agente (lido sempre)
+├── README.md            # você está aqui
+├── .specs/
+│   ├── constitution.md  # princípios inegociáveis (stack, regras)
+│   └── 001-mundo-voxel-camera/
+│       ├── spec.md      # o QUÊ e o PORQUÊ
+│       ├── plan.md      # o COMO
+│       └── tasks.md     # passos executáveis
+├── docs/adr/            # decisões arquiteturais (memória do projeto)
+└── src/                 # código do jogo
+```
+
+### Como nasce uma feature nova
+1. Cria `.specs/<feature>/spec.md` (intenção + critérios de aceitação).
+2. Deriva `plan.md` (arquitetura, contratos).
+3. Quebra em `tasks.md` (passos pequenos e verificáveis).
+4. Implementa, marcando tasks no **mesmo commit**. Decisão relevante? Vira ADR.
+
+## 🛣️ Próximas features (ideias)
+- Quebrar / colocar blocos (raycast + mouse).
+- Gravidade, colisão e pulo.
+- Texturas (atlas) no lugar de cores sólidas.
+- Streaming de chunks (mundo "infinito").
