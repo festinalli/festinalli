@@ -44,6 +44,13 @@ Plataforma que automatiza aportes mensais numa cesta recomendada, com motor de c
 - Motor de compra (lote padrão/fracionário, distribuição proporcional, custódia), rebalanceamento e cálculo de IR publicado em Kafka.
 - Segurança: **JWT + RBAC** com permissões finas, **PBKDF2**, defesa contra **IDOR**, rate limiting nos endpoints de auth, sem credenciais default.
 
+### [minecraft-style-game-ssd-fvmmc3](https://github.com/festinalli/minecraft-style-game-ssd-fvmmc3) — jogo estilo Minecraft no navegador, construído com Spec-Driven Development
+Mundo de blocos (voxels) **infinito** que roda no navegador, desenvolvido inteiramente sob **SDD**: cada feature nasce de `spec → plan → tasks`, com decisões registradas em **ADRs**.
+- **JavaScript + Three.js + Vite**, artefato 100% estático (publicável no GitHub Pages), sem dependências de gameplay externas.
+- **Mundo infinito por streaming de chunks**: geração determinística por seed, *face culling* em malha por chunk, carregamento incremental e descarregamento por distância.
+- **Física** (gravidade/colisão/pulo + voo), **construir/destruir** por raycast, **8 blocos** texturizados via atlas procedural e **persistência** no `localStorage`.
+- 7 features documentadas (spec/plan/tasks) + **6 ADRs**; verificação por testes *headless* a cada incremento (modelo de loop incremental estilo Karpathy).
+
 ---
 
 ## 🚀 Competências principais
