@@ -150,12 +150,12 @@ export function buildWorldMesh(voxels) {
   return mesh;
 }
 
-/** Altura do terreno (top + 1) no centro do mundo, para posicionar o jogador. */
-export function spawnHeight(voxels) {
+/** Y da SUPERFÍCIE do terreno no centro do mundo (topo do bloco mais alto). */
+export function spawnSurfaceY(voxels) {
   const cx = Math.floor(SIZE_X / 2);
   const cz = Math.floor(SIZE_Z / 2);
   for (let y = SIZE_Y - 1; y >= 0; y--) {
-    if (isSolid(voxels.get(cx, y, cz))) return y + 2;
+    if (isSolid(voxels.get(cx, y, cz))) return y + 1; // topo do bloco
   }
-  return BASE_HEIGHT + 2;
+  return BASE_HEIGHT;
 }

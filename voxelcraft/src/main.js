@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { generateWorld, buildWorldMesh, spawnHeight } from './world/world.js';
+import { generateWorld, buildWorldMesh, spawnSurfaceY } from './world/world.js';
+import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
 import { BLOCK_COLOR } from './blocks.js';
@@ -47,11 +48,13 @@ function rebuildWorld() {
   scene.add(worldMesh);
 }
 
-camera.position.set(0, spawnHeight(voxels), 0);
-camera.lookAt(8, spawnHeight(voxels) - 2, 8);
+// Spawn: olho alguns blocos acima da superfície → o jogador cai e pousa.
+const surfaceY = spawnSurfaceY(voxels);
+camera.position.set(0, surfaceY + PLAYER.eye + 3, 0);
+camera.lookAt(12, surfaceY, 12);
 
 // --- Controles + overlay ---
-const { controls, update } = createControls(camera, renderer.domElement);
+const { controls, update } = createControls(camera, renderer.domElement, voxels);
 scene.add(controls.object); // PointerLockControls move este objeto (a câmera)
 
 const overlay = document.getElementById('overlay');

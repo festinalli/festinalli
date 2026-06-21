@@ -20,13 +20,19 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - **Botão esquerdo** quebra, **botão direito** coloca.
 - **Hotbar** (`1`–`4`) pra escolher grama/terra/pedra/areia.
 
+**Feature 003 — Física**
+- **Gravidade**, **colisão** (não atravessa blocos) e **pulo** (`Espaço`).
+- **Modo voo** alternável com `F` (ainda com colisão).
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |
 |-----------------|----------------------|
 | Olhar           | Mouse                |
 | Mover           | `W` `A` `S` `D`      |
-| Subir / Descer  | `Espaço` / `Shift`   |
+| Pular           | `Espaço`             |
+| Voo (liga/desliga) | `F`               |
+| Voar (sobe/desce) | `Espaço` / `Shift` |
 | Correr          | `Ctrl`               |
 | Quebrar bloco   | Botão esquerdo       |
 | Colocar bloco   | Botão direito        |
