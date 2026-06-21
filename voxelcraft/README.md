@@ -7,12 +7,18 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 > (`voxelcraft/`); o `README.md` da raiz do repositório é o currículo do dono e
 > não é tocado por este projeto.
 
-## ✨ O que já tem (feature 001)
+## ✨ O que já tem
 
+**Feature 001 — Mundo + câmera**
 - Terreno voxel **procedural e determinístico** (mesma seed ⇒ mesmo mundo).
 - 3+ tipos de bloco por cor: grama, terra, pedra (e areia nas partes baixas).
 - Câmera em **primeira pessoa** com olhar pelo mouse e **voo livre**.
 - Render otimizado por **face culling** (só desenha faces expostas).
+
+**Feature 002 — Quebrar / colocar blocos**
+- Mira por **raycast** com realce do bloco apontado.
+- **Botão esquerdo** quebra, **botão direito** coloca.
+- **Hotbar** (`1`–`4`) pra escolher grama/terra/pedra/areia.
 
 ## 🎮 Controles
 
@@ -22,6 +28,9 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 | Mover           | `W` `A` `S` `D`      |
 | Subir / Descer  | `Espaço` / `Shift`   |
 | Correr          | `Ctrl`               |
+| Quebrar bloco   | Botão esquerdo       |
+| Colocar bloco   | Botão direito        |
+| Escolher bloco  | `1` `2` `3` `4`      |
 | Pausar          | `Esc`                |
 
 Clique na tela inicial para capturar o mouse e começar.
@@ -52,12 +61,11 @@ Three.js é a única dependência de runtime. Veja `.specs/constitution.md`.
 voxelcraft/
 ├── CLAUDE.md            # contexto do agente (lido sempre)
 ├── README.md            # você está aqui
+├── LOOP.md              # loop de desenvolvimento (SDD + modelo Karpathy) + roadmap
 ├── .specs/
 │   ├── constitution.md  # princípios inegociáveis (stack, regras)
-│   └── 001-mundo-voxel-camera/
-│       ├── spec.md      # o QUÊ e o PORQUÊ
-│       ├── plan.md      # o COMO
-│       └── tasks.md     # passos executáveis
+│   ├── 001-mundo-voxel-camera/   # spec.md · plan.md · tasks.md
+│   └── 002-quebrar-colocar-blocos/
 ├── docs/adr/            # decisões arquiteturais (memória do projeto)
 └── src/                 # código do jogo
 ```

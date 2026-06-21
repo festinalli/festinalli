@@ -49,6 +49,22 @@
         position: fixed; left: 12px; bottom: 10px; color: #fff; opacity: .8;
         font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,.6); pointer-events: none; z-index: 5;
       }
+
+      /* Hotbar (seleção de bloco) */
+      #hotbar {
+        position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+        display: flex; gap: 8px; z-index: 5; pointer-events: none;
+      }
+      #hotbar .slot {
+        width: 46px; height: 46px; border-radius: 8px; position: relative;
+        border: 3px solid rgba(255,255,255,.35); box-shadow: 0 2px 6px rgba(0,0,0,.4);
+      }
+      #hotbar .slot.active { border-color: #fff; transform: translateY(-4px); }
+      #hotbar .slot span {
+        position: absolute; left: 4px; top: 2px; font-size: 12px; font-weight: 700;
+        color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8);
+      }
+
       .hidden { display: none !important; }
     </style>
   </head>
@@ -56,6 +72,7 @@
     <div id="app"></div>
     <div id="crosshair" class="hidden"></div>
     <div id="hud" class="hidden">Voxelcraft · <span id="fps">–</span> FPS · Esc para pausar</div>
+    <div id="hotbar" class="hidden"></div>
 
     <div id="overlay">
       <h1>VOXELCRAFT</h1>
@@ -66,6 +83,8 @@
         <span>Mover</span><span><b>W</b> <b>A</b> <b>S</b> <b>D</b></span>
         <span>Subir / Descer</span><span><b>Espaço</b> / <b>Shift</b></span>
         <span>Correr</span><span><b>Ctrl</b></span>
+        <span>Quebrar / Colocar</span><span><b>Botão esq.</b> / <b>dir.</b></span>
+        <span>Escolher bloco</span><span><b>1</b> <b>2</b> <b>3</b> <b>4</b></span>
         <span>Pausar</span><span><b>Esc</b></span>
       </div>
     </div>
