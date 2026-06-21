@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { generateWorld, buildWorldMesh, spawnSurfaceY } from './world/world.js';
+import { World, CHUNK_SIZE, parseKey } from './world/world.js';
+import { createStreamer } from './world/streamer.js';
 import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
@@ -8,6 +9,7 @@ import { loadWorld, saveWorld, clearWorld } from './world/persistence.js';
 import { BLOCK_COLOR } from './blocks.js';
 
 const WORLD_SEED = 1337; // seed fixa: mundo determinístico (constitution)
+const RENDER_RADIUS = 6; // chunks visíveis ao redor do jogador
 
 // --- Renderer ---
 const app = document.getElementById('app');
@@ -19,15 +21,16 @@ app.appendChild(renderer.domElement);
 // --- Cena e céu ---
 const scene = new THREE.Scene();
 const SKY = 0x87b7e8;
+const VIEW = RENDER_RADIUS * CHUNK_SIZE;
 scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.Fog(SKY, 40, 120);
+scene.fog = new THREE.Fog(SKY, VIEW * 0.5, VIEW); // esconde o pop-in dos chunks
 
 // --- Câmera ---
 const camera = new THREE.PerspectiveCamera(
   72,
   window.innerWidth / window.innerHeight,
   0.1,
-  1000
+  VIEW + CHUNK_SIZE * 2
 );
 
 // --- Luzes ---
@@ -37,7 +40,7 @@ scene.add(sun);
 scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x4a5a3a, 0.7));
 scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
-// --- Mundo ---
+// --- Material (atlas de texturas) ---
 const atlas = makeAtlasTexture();
 const worldMaterial = new THREE.MeshStandardMaterial({
   map: atlas,
@@ -46,53 +49,52 @@ const worldMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.0,
 });
 
-const voxels = generateWorld(WORLD_SEED);
+// --- Mundo (infinito, por chunks) ---
+const world = new World(WORLD_SEED);
 
-// Carrega save compatível (mesma seed e mesmo tamanho), se houver.
+// Carrega save compatível (mesma seed): aplica os chunks modificados salvos.
 let savedPlayer = null;
 const saved = loadWorld();
-if (saved && saved.seed === WORLD_SEED && saved.data.length === voxels.data.length) {
-  voxels.data.set(saved.data);
+if (saved && saved.seed === WORLD_SEED) {
+  for (const [key, data] of saved.chunks) {
+    const [cx, cz] = parseKey(key);
+    world.applyChunk(cx, cz, data);
+  }
   savedPlayer = saved.player ?? null;
 }
 
-let worldMesh = buildWorldMesh(voxels, worldMaterial);
-scene.add(worldMesh);
+// --- Streaming de chunks ---
+const streamer = createStreamer({
+  world,
+  scene,
+  material: worldMaterial,
+  radius: RENDER_RADIUS,
+});
 
 // --- Autosave (debounced) ---
 let saveTimer = null;
 function saveCurrent() {
-  saveWorld(voxels, WORLD_SEED, {
-    x: camera.position.x,
-    y: camera.position.y,
-    z: camera.position.z,
-  });
+  saveWorld(world, { x: camera.position.x, y: camera.position.y, z: camera.position.z });
 }
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveCurrent, 500);
 }
 
-// Reconstrói a malha inteira após uma edição (ver ADR 0003). Reusa o material.
-function rebuildWorld() {
-  scene.remove(worldMesh);
-  worldMesh.geometry.dispose();
-  worldMesh = buildWorldMesh(voxels, worldMaterial);
-  scene.add(worldMesh);
-  scheduleSave();
-}
-
-// Spawn: posição salva, ou olho alguns blocos acima da superfície (cai e pousa).
+// --- Spawn ---
 if (savedPlayer) {
   camera.position.set(savedPlayer.x, savedPlayer.y, savedPlayer.z);
 } else {
-  const surfaceY = spawnSurfaceY(voxels);
-  camera.position.set(0, surfaceY + PLAYER.eye + 3, 0);
+  const surfaceY = world.surfaceY(0, 0);
+  camera.position.set(0.5, surfaceY + PLAYER.eye + 3, 0.5);
 }
 camera.lookAt(camera.position.x + 12, camera.position.y - 1, camera.position.z + 12);
 
-// --- Controles + overlay ---
-const { controls, update } = createControls(camera, renderer.domElement, voxels);
+// Constrói os chunks próximos de uma vez (escondido atrás do overlay).
+streamer.update(camera.position, true);
+
+// --- Controles ---
+const { controls, update } = createControls(camera, renderer.domElement, world);
 scene.add(controls.object); // PointerLockControls move este objeto (a câmera)
 
 const overlay = document.getElementById('overlay');
@@ -104,12 +106,13 @@ const hotbar = document.getElementById('hotbar');
 const editing = createEditing({
   camera,
   scene,
-  voxels,
-  getMesh: () => worldMesh,
-  rebuild: rebuildWorld,
+  world,
+  getMeshes: () => streamer.getMeshes(),
+  rebuildAround: (bx, bz) => streamer.rebuildAround(bx, bz),
   isLocked: () => controls.isLocked,
   getPlayerPos: (out) => out.copy(camera.position),
   onSelect: (block) => renderHotbar(block),
+  onEdit: scheduleSave,
 });
 
 // HUD da hotbar: um quadradinho por tipo, destacando o selecionado.
@@ -165,6 +168,7 @@ let fpsFrames = 0;
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.1); // clamp p/ evitar saltos
   update(dt);
+  streamer.update(camera.position); // streaming incremental conforme anda
   editing.updateHighlight();
 
   fpsAccum += dt;

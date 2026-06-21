@@ -10,18 +10,18 @@ export const HOTBAR = [
 ];
 
 /**
- * Função PURA: do ponto de impacto + normal da face para coordenadas de voxel.
- * Consistente com world.js: worldX = voxelX - offsetX (idem Z; Y sem offset).
+ * Função PURA: do ponto de impacto + normal da face para coordenadas GLOBAIS
+ * de bloco (a geometria dos chunks já está em coords de mundo, sem offset).
  *
  * @returns {{hit:{x,y,z}, place:{x,y,z}}}
  *   hit   = bloco atingido (para remover)
  *   place = vizinho na direção da normal (para colocar)
  */
-export function resolveTarget(point, normal, offsetX, offsetZ) {
+export function resolveTarget(point, normal) {
   const hit = {
-    x: Math.floor(point.x - normal.x * 0.5 + offsetX),
+    x: Math.floor(point.x - normal.x * 0.5),
     y: Math.floor(point.y - normal.y * 0.5),
-    z: Math.floor(point.z - normal.z * 0.5 + offsetZ),
+    z: Math.floor(point.z - normal.z * 0.5),
   };
   const place = {
     x: hit.x + Math.round(normal.x),
@@ -32,29 +32,33 @@ export function resolveTarget(point, normal, offsetX, offsetZ) {
 }
 
 /**
- * Mira por raycast, realce do bloco alvo e edição (remover/colocar).
+ * Mira por raycast, realce do bloco alvo e edição (remover/colocar) num mundo
+ * de chunks.
  *
  * @param {object} opts
  * @param {THREE.Camera} opts.camera
  * @param {THREE.Scene} opts.scene
- * @param {import('../world/world.js').VoxelData} opts.voxels
- * @param {() => THREE.Mesh} opts.getMesh   mesh atual do mundo
- * @param {() => void} opts.rebuild         reconstrói a mesh após editar
- * @param {() => boolean} opts.isLocked     pointer lock ativo?
- * @param {(out:THREE.Vector3) => void} opts.getPlayerPos  posição da câmera
- * @param {(blockType:number) => void} [opts.onSelect]     callback de seleção
+ * @param {import('../world/world.js').World} opts.world
+ * @param {() => THREE.Mesh[]} opts.getMeshes  malhas de chunk ativas
+ * @param {(bx:number, bz:number) => void} opts.rebuildAround  rebuilda chunk(s)
+ * @param {() => boolean} opts.isLocked
+ * @param {(out:THREE.Vector3) => void} opts.getPlayerPos
+ * @param {(blockType:number) => void} [opts.onSelect]
+ * @param {() => void} [opts.onEdit]  notifica edição (ex.: autosave)
  */
 export function createEditing(opts) {
-  const { camera, scene, voxels, getMesh, rebuild, isLocked, getPlayerPos, onSelect } = opts;
+  const {
+    camera, scene, world, getMeshes, rebuildAround,
+    isLocked, getPlayerPos, onSelect, onEdit,
+  } = opts;
 
   const raycaster = new THREE.Raycaster();
   raycaster.far = REACH;
   const center = new THREE.Vector2(0, 0);
 
-  let selectedIndex = 0; // índice na HOTBAR
-  let current = null; // último alvo resolvido (ou null)
+  let selectedIndex = 0;
+  let current = null;
 
-  // Realce do bloco mirado.
   const highlight = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
     new THREE.LineBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.8 })
@@ -67,18 +71,18 @@ export function createEditing(opts) {
   function playerCell() {
     getPlayerPos(playerPos);
     return {
-      x: Math.floor(playerPos.x + voxels.offsetX),
+      x: Math.floor(playerPos.x),
       y: Math.floor(playerPos.y),
-      z: Math.floor(playerPos.z + voxels.offsetZ),
+      z: Math.floor(playerPos.z),
     };
   }
 
   function pick() {
-    const hits = raycaster.intersectObject(getMesh(), false);
+    const hits = raycaster.intersectObjects(getMeshes(), false);
     if (hits.length === 0) return null;
     const h = hits[0];
     if (!h.face) return null;
-    return resolveTarget(h.point, h.face.normal, voxels.offsetX, voxels.offsetZ);
+    return resolveTarget(h.point, h.face.normal);
   }
 
   function updateHighlight() {
@@ -94,11 +98,7 @@ export function createEditing(opts) {
       return;
     }
     highlight.visible = true;
-    highlight.position.set(
-      current.hit.x - voxels.offsetX + 0.5,
-      current.hit.y + 0.5,
-      current.hit.z - voxels.offsetZ + 0.5
-    );
+    highlight.position.set(current.hit.x + 0.5, current.hit.y + 0.5, current.hit.z + 0.5);
   }
 
   function sameCell(a, b) {
@@ -109,16 +109,17 @@ export function createEditing(opts) {
     if (!isLocked() || !current) return;
 
     if (e.button === 0) {
-      // remover bloco mirado
-      voxels.set(current.hit.x, current.hit.y, current.hit.z, BLOCK.AIR);
-      rebuild();
+      const { x, y, z } = current.hit;
+      world.setBlock(x, y, z, BLOCK.AIR);
+      rebuildAround(x, z);
+      onEdit?.();
     } else if (e.button === 2) {
-      // colocar no vizinho, se vazio e fora do jogador
       const p = current.place;
-      const occupied = isSolid(voxels.get(p.x, p.y, p.z));
+      const occupied = isSolid(world.getBlock(p.x, p.y, p.z));
       if (!occupied && !sameCell(p, playerCell())) {
-        voxels.set(p.x, p.y, p.z, HOTBAR[selectedIndex]);
-        rebuild();
+        world.setBlock(p.x, p.y, p.z, HOTBAR[selectedIndex]);
+        rebuildAround(p.x, p.z);
+        onEdit?.();
       }
     }
   }
@@ -140,7 +141,7 @@ export function createEditing(opts) {
   }
 
   function onContextMenu(e) {
-    e.preventDefault(); // sem menu do navegador ao clicar com botão direito
+    e.preventDefault();
   }
 
   document.addEventListener('mousedown', onMouseDown);
@@ -148,7 +149,6 @@ export function createEditing(opts) {
   document.addEventListener('wheel', onWheel, { passive: false });
   document.addEventListener('contextmenu', onContextMenu);
 
-  // seleção inicial
   onSelect?.(HOTBAR[selectedIndex]);
 
   function dispose() {

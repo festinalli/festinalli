@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { collidesAABB } from './collision.js';
+// `world` expõe getBlock(bx,by,bz) em coordenadas globais.
 
 // Constantes de movimento (fonte única).
 const WALK_SPEED = 6; // andar (blocos/s)
@@ -17,9 +18,9 @@ const MAX_STEP = 0.2; // subdivisão do movimento (anti-tunneling)
  *
  * @param {THREE.Camera} camera
  * @param {HTMLElement} domElement
- * @param {import('../world/world.js').VoxelData} voxels
+ * @param {import('../world/world.js').World} world
  */
-export function createControls(camera, domElement, voxels) {
+export function createControls(camera, domElement, world) {
   const controls = new PointerLockControls(camera, domElement);
 
   const keys = {
@@ -81,7 +82,7 @@ export function createControls(camera, domElement, voxels) {
     for (let i = 0; i < steps; i++) {
       const prev = camera.position[axis];
       camera.position[axis] += step;
-      if (collidesAABB(voxels, camera.position.x, camera.position.y, camera.position.z)) {
+      if (collidesAABB(world, camera.position.x, camera.position.y, camera.position.z)) {
         camera.position[axis] = prev;
         blocked = true;
         break;

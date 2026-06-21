@@ -36,6 +36,11 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - **8 blocos**: grama, terra, pedra, areia, madeira, folhas, tábuas, pedregulho.
 - Seleção por `1`–`8` **ou roda do mouse**; texturas com orientação corrigida.
 
+**Feature 006 — Mundo infinito**
+- Terreno **gerado por chunks sob demanda** ao redor do jogador (sem bordas).
+- Chunks distantes são **descarregados**; carregamento **incremental** por frame.
+- Save guarda só os **chunks modificados**; o resto regenera da seed.
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |
@@ -82,9 +87,14 @@ voxelcraft/
 ├── LOOP.md              # loop de desenvolvimento (SDD + modelo Karpathy) + roadmap
 ├── .specs/
 │   ├── constitution.md  # princípios inegociáveis (stack, regras)
-│   ├── 001-mundo-voxel-camera/   # spec.md · plan.md · tasks.md
-│   └── 002-quebrar-colocar-blocos/
-├── docs/adr/            # decisões arquiteturais (memória do projeto)
+│   ├── 001-mundo-voxel-camera/   # cada feature: spec.md · plan.md · tasks.md
+│   ├── 002-quebrar-colocar-blocos/
+│   ├── 003-gravidade-colisao-pulo/
+│   ├── 004-texturas-atlas/
+│   ├── 005-salvar-carregar-mundo/
+│   ├── 006-mundo-infinito-chunks/
+│   └── 007-hotbar-inventario/
+├── docs/adr/            # decisões arquiteturais (0001–0006)
 └── src/                 # código do jogo
 ```
 
@@ -95,7 +105,9 @@ voxelcraft/
 4. Implementa, marcando tasks no **mesmo commit**. Decisão relevante? Vira ADR.
 
 ## 🛣️ Próximas features (ideias)
-- Quebrar / colocar blocos (raycast + mouse).
-- Gravidade, colisão e pulo.
-- Texturas (atlas) no lugar de cores sólidas.
-- Streaming de chunks (mundo "infinito").
+- Árvores e estruturas na geração (atualmente só relevo por altura).
+- Coletar bloco ao quebrar (drops) + inventário com quantidades.
+- Água/transparência e cavernas (ruído 3D).
+- Dano de queda, agachar, nado.
+
+> Roadmap e status atual em [`LOOP.md`](./LOOP.md).
