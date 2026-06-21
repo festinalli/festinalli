@@ -81,19 +81,23 @@ export function generateWorld(seed) {
 
 // Tabela de faces de um cubo unitário (winding correto para THREE FrontSide).
 // Baseada na convenção clássica de voxel rendering em WebGL.
+// Cada face declara: direção (normal), sombreamento, nome (top/bottom/side),
+// os 4 corners do cubo unitário e os 4 UVs locais [u,v] já orientados
+// (v=0 = topo do tile; em faces laterais V segue o eixo Y do mundo).
 const FACES = [
-  { dir: [-1, 0, 0], shade: 0.8, name: 'side', corners: [[0, 1, 0], [0, 0, 0], [0, 1, 1], [0, 0, 1]] }, // -x
-  { dir: [1, 0, 0], shade: 0.8, name: 'side', corners: [[1, 1, 1], [1, 0, 1], [1, 1, 0], [1, 0, 0]] }, // +x
-  { dir: [0, -1, 0], shade: 0.55, name: 'bottom', corners: [[1, 0, 1], [0, 0, 1], [1, 0, 0], [0, 0, 0]] }, // -y
-  { dir: [0, 1, 0], shade: 1.0, name: 'top', corners: [[0, 1, 1], [1, 1, 1], [0, 1, 0], [1, 1, 0]] }, // +y (topo)
-  { dir: [0, 0, -1], shade: 0.7, name: 'side', corners: [[1, 0, 0], [0, 0, 0], [1, 1, 0], [0, 1, 0]] }, // -z
-  { dir: [0, 0, 1], shade: 0.7, name: 'side', corners: [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]] }, // +z
+  { dir: [-1, 0, 0], shade: 0.8, name: 'side',
+    corners: [[0, 1, 0], [0, 0, 0], [0, 1, 1], [0, 0, 1]], uv: [[0, 0], [0, 1], [1, 0], [1, 1]] }, // -x
+  { dir: [1, 0, 0], shade: 0.8, name: 'side',
+    corners: [[1, 1, 1], [1, 0, 1], [1, 1, 0], [1, 0, 0]], uv: [[1, 0], [1, 1], [0, 0], [0, 1]] }, // +x
+  { dir: [0, -1, 0], shade: 0.55, name: 'bottom',
+    corners: [[1, 0, 1], [0, 0, 1], [1, 0, 0], [0, 0, 0]], uv: [[1, 1], [0, 1], [1, 0], [0, 0]] }, // -y
+  { dir: [0, 1, 0], shade: 1.0, name: 'top',
+    corners: [[0, 1, 1], [1, 1, 1], [0, 1, 0], [1, 1, 0]], uv: [[0, 1], [1, 1], [0, 0], [1, 0]] }, // +y
+  { dir: [0, 0, -1], shade: 0.7, name: 'side',
+    corners: [[1, 0, 0], [0, 0, 0], [1, 1, 0], [0, 1, 0]], uv: [[1, 1], [0, 1], [1, 0], [0, 0]] }, // -z
+  { dir: [0, 0, 1], shade: 0.7, name: 'side',
+    corners: [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]], uv: [[0, 1], [1, 1], [0, 0], [1, 0]] }, // +z
 ];
-
-// UV de cada corner dentro do tile (padrão consistente: 0–1 e 0–2 são arestas).
-function cornerUV(k, rect) {
-  return [k === 0 || k === 2 ? rect.u0 : rect.u1, k === 0 || k === 1 ? rect.v0 : rect.v1];
-}
 
 /**
  * Constrói UMA malha do mundo inteiro usando face culling: só emite as faces
@@ -133,8 +137,8 @@ export function buildWorldMesh(voxels, material) {
             );
             normals.push(dx, dy, dz);
             colors.push(s, s, s);
-            const [u, vv] = cornerUV(k, rect);
-            uvs.push(u, vv);
+            const [lu, lv] = face.uv[k]; // UV local [0..1] já orientada
+            uvs.push(rect.u0 + lu * (rect.u1 - rect.u0), rect.v0 + lv * (rect.v1 - rect.v0));
           }
           indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
         }

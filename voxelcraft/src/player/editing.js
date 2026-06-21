@@ -3,8 +3,11 @@ import { BLOCK, isSolid } from '../blocks.js';
 
 export const REACH = 8; // alcance (em blocos) para mirar/editar
 
-// Teclas 1–4 -> tipo de bloco a colocar.
-export const HOTBAR = [BLOCK.GRASS, BLOCK.DIRT, BLOCK.STONE, BLOCK.SAND];
+// Teclas 1–8 (e roda do mouse) -> tipo de bloco a colocar.
+export const HOTBAR = [
+  BLOCK.GRASS, BLOCK.DIRT, BLOCK.STONE, BLOCK.SAND,
+  BLOCK.WOOD, BLOCK.LEAVES, BLOCK.PLANKS, BLOCK.COBBLE,
+];
 
 /**
  * Função PURA: do ponto de impacto + normal da face para coordenadas de voxel.
@@ -128,12 +131,21 @@ export function createEditing(opts) {
     }
   }
 
+  function onWheel(e) {
+    if (!isLocked()) return;
+    const dir = e.deltaY > 0 ? 1 : -1;
+    selectedIndex = (selectedIndex + dir + HOTBAR.length) % HOTBAR.length;
+    onSelect?.(HOTBAR[selectedIndex]);
+    e.preventDefault();
+  }
+
   function onContextMenu(e) {
     e.preventDefault(); // sem menu do navegador ao clicar com botão direito
   }
 
   document.addEventListener('mousedown', onMouseDown);
   document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('wheel', onWheel, { passive: false });
   document.addEventListener('contextmenu', onContextMenu);
 
   // seleção inicial
@@ -142,6 +154,7 @@ export function createEditing(opts) {
   function dispose() {
     document.removeEventListener('mousedown', onMouseDown);
     document.removeEventListener('keydown', onKeyDown);
+    document.removeEventListener('wheel', onWheel);
     document.removeEventListener('contextmenu', onContextMenu);
     scene.remove(highlight);
     highlight.geometry.dispose();

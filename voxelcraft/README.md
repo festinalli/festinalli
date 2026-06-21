@@ -32,6 +32,10 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - O mundo **persiste** no `localStorage` (autosave após editar / ao pausar / ao sair).
 - Restaura a **posição** ao voltar. Botão **"Novo mundo"** recomeça do zero.
 
+**Feature 007 — Hotbar / inventário**
+- **8 blocos**: grama, terra, pedra, areia, madeira, folhas, tábuas, pedregulho.
+- Seleção por `1`–`8` **ou roda do mouse**; texturas com orientação corrigida.
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |
@@ -44,7 +48,7 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 | Correr          | `Ctrl`               |
 | Quebrar bloco   | Botão esquerdo       |
 | Colocar bloco   | Botão direito        |
-| Escolher bloco  | `1` `2` `3` `4`      |
+| Escolher bloco  | `1`–`8` ou roda do mouse |
 | Pausar          | `Esc`                |
 
 Clique na tela inicial para capturar o mouse e começar.

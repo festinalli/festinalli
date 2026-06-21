@@ -41,7 +41,7 @@ Quanto o agente corre sozinho entre pausas humanas. Definido por você:
 | 003 | Gravidade, colisão e pulo                 | ✅ Feito (validação manual pendente) |
 | 004 | Texturas (atlas) no lugar de cores        | ✅ Feito (validação manual pendente) |
 | 005 | Salvar / carregar mundo (localStorage)    | ✅ Feito (validação manual pendente) |
-| 007 | Hotbar / inventário                       | 🔨 Em progresso |
+| 007 | Hotbar / inventário                       | ✅ Feito (validação manual pendente) |
 | 006 | Streaming de chunks (mundo "infinito")    | ⏸️ Aguardando decisão (pivô arquitetural) |
 
 Legenda: ✅ feito · 🔨 em progresso · ⏳ planejado
