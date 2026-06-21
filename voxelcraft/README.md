@@ -28,6 +28,10 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - **Atlas procedural** (gerado em runtime, sem arquivos de imagem no repo).
 - Visual pixelado (filtro nearest); grama com topo e laterais distintos.
 
+**Feature 005 — Salvar / carregar**
+- O mundo **persiste** no `localStorage` (autosave após editar / ao pausar / ao sair).
+- Restaura a **posição** ao voltar. Botão **"Novo mundo"** recomeça do zero.
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |

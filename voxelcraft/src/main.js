@@ -4,6 +4,7 @@ import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
 import { makeAtlasTexture } from './world/atlas.js';
+import { loadWorld, saveWorld, clearWorld } from './world/persistence.js';
 import { BLOCK_COLOR } from './blocks.js';
 
 const WORLD_SEED = 1337; // seed fixa: mundo determinístico (constitution)
@@ -46,8 +47,31 @@ const worldMaterial = new THREE.MeshStandardMaterial({
 });
 
 const voxels = generateWorld(WORLD_SEED);
+
+// Carrega save compatível (mesma seed e mesmo tamanho), se houver.
+let savedPlayer = null;
+const saved = loadWorld();
+if (saved && saved.seed === WORLD_SEED && saved.data.length === voxels.data.length) {
+  voxels.data.set(saved.data);
+  savedPlayer = saved.player ?? null;
+}
+
 let worldMesh = buildWorldMesh(voxels, worldMaterial);
 scene.add(worldMesh);
+
+// --- Autosave (debounced) ---
+let saveTimer = null;
+function saveCurrent() {
+  saveWorld(voxels, WORLD_SEED, {
+    x: camera.position.x,
+    y: camera.position.y,
+    z: camera.position.z,
+  });
+}
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCurrent, 500);
+}
 
 // Reconstrói a malha inteira após uma edição (ver ADR 0003). Reusa o material.
 function rebuildWorld() {
@@ -55,12 +79,17 @@ function rebuildWorld() {
   worldMesh.geometry.dispose();
   worldMesh = buildWorldMesh(voxels, worldMaterial);
   scene.add(worldMesh);
+  scheduleSave();
 }
 
-// Spawn: olho alguns blocos acima da superfície → o jogador cai e pousa.
-const surfaceY = spawnSurfaceY(voxels);
-camera.position.set(0, surfaceY + PLAYER.eye + 3, 0);
-camera.lookAt(12, surfaceY, 12);
+// Spawn: posição salva, ou olho alguns blocos acima da superfície (cai e pousa).
+if (savedPlayer) {
+  camera.position.set(savedPlayer.x, savedPlayer.y, savedPlayer.z);
+} else {
+  const surfaceY = spawnSurfaceY(voxels);
+  camera.position.set(0, surfaceY + PLAYER.eye + 3, 0);
+}
+camera.lookAt(camera.position.x + 12, camera.position.y - 1, camera.position.z + 12);
 
 // --- Controles + overlay ---
 const { controls, update } = createControls(camera, renderer.domElement, voxels);
@@ -107,6 +136,17 @@ controls.addEventListener('unlock', () => {
   crosshair.classList.add('hidden');
   hud.classList.add('hidden');
   hotbar.classList.add('hidden');
+  saveCurrent(); // captura a posição ao pausar
+});
+
+window.addEventListener('beforeunload', saveCurrent);
+
+// Botão "Novo mundo": descarta o save e recomeça.
+const newWorldBtn = document.getElementById('new-world');
+newWorldBtn.addEventListener('click', (e) => {
+  e.stopPropagation(); // não dispara o lock do overlay
+  clearWorld();
+  location.reload();
 });
 
 // --- Resize ---

@@ -39,6 +39,12 @@
         padding: 12px 28px; border-radius: 10px; font-size: 18px; font-weight: 600;
         background: #6c5ce7; box-shadow: 0 8px 24px rgba(108,92,231,.4);
       }
+      #new-world {
+        margin-top: -6px; padding: 8px 18px; border-radius: 8px; cursor: pointer;
+        font-size: 14px; color: #fff; background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.25);
+      }
+      #new-world:hover { background: rgba(255,255,255,.22); }
       .controls {
         display: grid; grid-template-columns: auto auto; gap: 6px 14px;
         font-size: 15px; opacity: 0.92; margin-top: 4px;
@@ -78,6 +84,7 @@
       <h1>VOXELCRAFT</h1>
       <div class="sub">Um mundo de blocos pra explorar</div>
       <div class="play">▶ Clique para jogar</div>
+      <button id="new-world" type="button">🗑️ Novo mundo</button>
       <div class="controls">
         <span>Olhar</span><span><b>Mouse</b></span>
         <span>Mover</span><span><b>W</b> <b>A</b> <b>S</b> <b>D</b></span>
