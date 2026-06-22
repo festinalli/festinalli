@@ -41,6 +41,15 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 - Chunks distantes são **descarregados**; carregamento **incremental** por frame.
 - Save guarda só os **chunks modificados**; o resto regenera da seed.
 
+### Fase 2 — melhorias
+- **008 Testes + CI:** suíte `node:test` (sem deps) + GitHub Actions (build + test).
+- **009 Step-up:** sobe degraus de 1 bloco só andando (colisão menos "grudenta").
+- **010 Árvores:** tronco + copa procedurais, sem cortes nas bordas de chunk.
+- **011 Água:** nível do mar com água **translúcida** (vê-se o fundo), não-sólida.
+- **012 Dia/noite:** sol, luz e céu mudam com a hora (com alvorada/entardecer).
+- **013 Inventário:** quebrar **dropa** o bloco; colocar **consome**; hotbar com quantidades.
+- **014 Sons:** quebrar/colocar/passos sintetizados em runtime (Web Audio), `M` muta.
+
 ## 🎮 Controles
 
 | Ação            | Tecla                |
@@ -54,9 +63,13 @@ Construído com **Spec-Driven Development (SDD)** — toda feature nasce de uma 
 | Quebrar bloco   | Botão esquerdo       |
 | Colocar bloco   | Botão direito        |
 | Escolher bloco  | `1`–`8` ou roda do mouse |
+| Som (liga/desliga) | `M`               |
 | Pausar          | `Esc`                |
 
 Clique na tela inicial para capturar o mouse e começar.
+
+> Quebrar um bloco **adiciona** ao inventário; colocar **consome**. A hotbar
+> mostra as quantidades.
 
 ## 🚀 Como rodar
 
@@ -71,6 +84,7 @@ Build estático (publicável no GitHub Pages):
 ```bash
 npm run build    # gera dist/
 npm run preview  # serve o build localmente
+npm test         # roda a suíte (node:test) — também roda no CI
 ```
 
 ## 🧱 Stack
