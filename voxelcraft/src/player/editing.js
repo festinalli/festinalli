@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BLOCK, isSolid } from '../blocks.js';
+import { count, addBlock, takeBlock } from './inventory.js';
 
 export const REACH = 8; // alcance (em blocos) para mirar/editar
 
@@ -49,7 +50,7 @@ export function resolveTarget(point, normal) {
 export function createEditing(opts) {
   const {
     camera, scene, world, getMeshes, rebuildAround,
-    isLocked, getPlayerPos, onSelect, onEdit,
+    isLocked, getPlayerPos, onSelect, onEdit, inventory, onInventoryChange,
   } = opts;
 
   const raycaster = new THREE.Raycaster();
@@ -109,18 +110,30 @@ export function createEditing(opts) {
     if (!isLocked() || !current) return;
 
     if (e.button === 0) {
+      // quebrar: dropa o bloco no inventário
       const { x, y, z } = current.hit;
+      const broken = world.getBlock(x, y, z);
       world.setBlock(x, y, z, BLOCK.AIR);
       rebuildAround(x, z);
+      if (inventory && isSolid(broken)) {
+        addBlock(inventory, broken, 1);
+        onInventoryChange?.();
+      }
       onEdit?.();
     } else if (e.button === 2) {
+      // colocar: consome 1 do selecionado (precisa ter no inventário)
+      const block = HOTBAR[selectedIndex];
       const p = current.place;
       const occupied = isSolid(world.getBlock(p.x, p.y, p.z));
-      if (!occupied && !sameCell(p, playerCell())) {
-        world.setBlock(p.x, p.y, p.z, HOTBAR[selectedIndex]);
-        rebuildAround(p.x, p.z);
-        onEdit?.();
+      if (occupied || sameCell(p, playerCell())) return;
+      if (inventory && count(inventory, block) <= 0) return; // sem estoque
+      if (inventory) {
+        takeBlock(inventory, block);
+        onInventoryChange?.();
       }
+      world.setBlock(p.x, p.y, p.z, block);
+      rebuildAround(p.x, p.z);
+      onEdit?.();
     }
   }
 

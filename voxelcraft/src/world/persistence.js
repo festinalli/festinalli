@@ -28,17 +28,18 @@ function b64ToBytes(b64) {
  * @param {Array<[string, Uint8Array]>} entries  pares chunkKey -> dados
  * @param {number} seed
  * @param {{x,y,z}} player
+ * @param {object} [inv]  inventário (counts) — opcional
  * @returns {string}
  */
-export function serializeChunks(entries, seed, player) {
+export function serializeChunks(entries, seed, player, inv) {
   const chunks = {};
   for (const [key, data] of entries) chunks[key] = bytesToB64(data);
-  return JSON.stringify({ v: VERSION, seed, player, chunks });
+  return JSON.stringify({ v: VERSION, seed, player, inv, chunks });
 }
 
 /**
  * @param {string} str
- * @returns {{seed:number, player:object, chunks:Array<[string,Uint8Array]>} | null}
+ * @returns {{seed:number, player:object, inv:object|undefined, chunks:Array<[string,Uint8Array]>} | null}
  */
 export function deserializeChunks(str) {
   let obj;
@@ -57,19 +58,19 @@ export function deserializeChunks(str) {
   } catch {
     return null;
   }
-  return { seed: obj.seed, player: obj.player, chunks };
+  return { seed: obj.seed, player: obj.player, inv: obj.inv, chunks };
 }
 
 // --- Browser (localStorage) ---
 
-export function saveWorld(world, player) {
+export function saveWorld(world, player, inv) {
   const entries = [];
   for (const key of world.modified) {
     const data = world.chunks.get(key);
     if (data) entries.push([key, data]);
   }
   try {
-    localStorage.setItem(KEY, serializeChunks(entries, world.seed, player));
+    localStorage.setItem(KEY, serializeChunks(entries, world.seed, player, inv));
     return true;
   } catch {
     return false;

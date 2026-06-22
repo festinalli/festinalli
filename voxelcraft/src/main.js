@@ -4,6 +4,7 @@ import { createStreamer } from './world/streamer.js';
 import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
+import { makeInventory, fromJSON as fromInventoryJSON, toJSON as invToJSON, count as invCount } from './player/inventory.js';
 import { makeAtlasTexture } from './world/atlas.js';
 import { skyState } from './world/daynight.js';
 import { loadWorld, saveWorld, clearWorld } from './world/persistence.js';
@@ -80,6 +81,7 @@ const world = new World(WORLD_SEED);
 
 // Carrega save compatível (mesma seed): aplica os chunks modificados salvos.
 let savedPlayer = null;
+let savedInv = null;
 const saved = loadWorld();
 if (saved && saved.seed === WORLD_SEED) {
   for (const [key, data] of saved.chunks) {
@@ -87,7 +89,12 @@ if (saved && saved.seed === WORLD_SEED) {
     world.applyChunk(cx, cz, data);
   }
   savedPlayer = saved.player ?? null;
+  savedInv = saved.inv ?? null;
 }
+
+// --- Inventário (estoque inicial modesto; ou o do save) ---
+const INITIAL_STACK = 16;
+const inventory = savedInv ? fromInventoryJSON(savedInv, HOTBAR) : makeInventory(HOTBAR, INITIAL_STACK);
 
 // --- Streaming de chunks ---
 const streamer = createStreamer({
@@ -100,7 +107,11 @@ const streamer = createStreamer({
 // --- Autosave (debounced) ---
 let saveTimer = null;
 function saveCurrent() {
-  saveWorld(world, { x: camera.position.x, y: camera.position.y, z: camera.position.z });
+  saveWorld(
+    world,
+    { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+    invToJSON(inventory)
+  );
 }
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -129,6 +140,7 @@ const hud = document.getElementById('hud');
 const hotbar = document.getElementById('hotbar');
 
 // --- Edição (quebrar/colocar blocos) ---
+let selectedBlock = HOTBAR[0];
 const editing = createEditing({
   camera,
   scene,
@@ -137,18 +149,21 @@ const editing = createEditing({
   rebuildAround: (bx, bz) => streamer.rebuildAround(bx, bz),
   isLocked: () => controls.isLocked,
   getPlayerPos: (out) => out.copy(camera.position),
-  onSelect: (block) => renderHotbar(block),
+  onSelect: (block) => { selectedBlock = block; renderHotbar(); },
   onEdit: scheduleSave,
+  inventory,
+  onInventoryChange: () => renderHotbar(),
 });
 
-// HUD da hotbar: um quadradinho por tipo, destacando o selecionado.
-function renderHotbar(selected) {
+// HUD da hotbar: cor do bloco + número da tecla + quantidade; destaca o selecionado.
+function renderHotbar() {
   hotbar.innerHTML = '';
   HOTBAR.forEach((block, i) => {
+    const n = invCount(inventory, block);
     const slot = document.createElement('div');
-    slot.className = 'slot' + (block === selected ? ' active' : '');
+    slot.className = 'slot' + (block === selectedBlock ? ' active' : '') + (n <= 0 ? ' empty' : '');
     slot.style.background = '#' + BLOCK_COLOR[block].toString(16).padStart(6, '0');
-    slot.innerHTML = `<span>${i + 1}</span>`;
+    slot.innerHTML = `<span class="key">${i + 1}</span><span class="qty">${n}</span>`;
     hotbar.appendChild(slot);
   });
 }
