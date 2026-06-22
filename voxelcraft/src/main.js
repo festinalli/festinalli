@@ -48,6 +48,16 @@ const worldMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.95,
   metalness: 0.0,
 });
+const waterMaterial = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.7,
+  depthWrite: false, // evita artefatos de ordenação na transparência
+  side: THREE.DoubleSide,
+  roughness: 0.3,
+  metalness: 0.1,
+});
+const worldMaterials = { opaque: worldMaterial, water: waterMaterial };
 
 // --- Mundo (infinito, por chunks) ---
 const world = new World(WORLD_SEED);
@@ -67,7 +77,7 @@ if (saved && saved.seed === WORLD_SEED) {
 const streamer = createStreamer({
   world,
   scene,
-  material: worldMaterial,
+  materials: worldMaterials,
   radius: RENDER_RADIUS,
 });
 

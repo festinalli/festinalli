@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BLOCK, isSolid } from '../blocks.js';
+import { BLOCK, BLOCK_COLOR, isSolid } from '../blocks.js';
 import { makeNoise2D } from './noise.js';
 import { tileFor, uvForTile } from './atlas.js';
 
@@ -8,7 +8,7 @@ export const CHUNK_SIZE = 16; // blocos por lado (X e Z) de um chunk
 export const WORLD_HEIGHT = 48; // altura finita do mundo (Y)
 
 const BASE_HEIGHT = 8; // piso mínimo do terreno
-export const WATER_LEVEL = 10; // colunas baixas ganham areia no topo
+export const WATER_LEVEL = 20; // nível do mar: colunas abaixo enchem de água (fundo de areia)
 const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT;
 
 const TREE_DENSITY = 0.025; // chance por coluna de nascer uma árvore
@@ -93,7 +93,7 @@ export function generateChunk(seed, cx, cz) {
   const baseX = cx * CHUNK_SIZE;
   const baseZ = cz * CHUNK_SIZE;
 
-  // 1) terreno por altura
+  // 1) terreno por altura (+ água nas depressões abaixo do nível do mar)
   for (let lx = 0; lx < CHUNK_SIZE; lx++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       const height = columnHeight(noise, baseX + lx, baseZ + lz);
@@ -103,6 +103,10 @@ export function generateChunk(seed, cx, cz) {
         else if (y >= height - 3) block = BLOCK.DIRT;
         else block = BLOCK.STONE;
         data[idx(lx, y, lz)] = block;
+      }
+      // enche de água do topo do terreno até o nível do mar
+      for (let y = height + 1; y <= WATER_LEVEL; y++) {
+        data[idx(lx, y, lz)] = BLOCK.WATER;
       }
     }
   }
@@ -206,22 +210,35 @@ const FACES = [
     corners: [[0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]], uv: [[0, 1], [1, 1], [0, 0], [1, 0]] }, // +z
 ];
 
+function defaultMaterials() {
+  return {
+    opaque: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.0 }),
+    water: new THREE.MeshStandardMaterial({
+      vertexColors: true, transparent: true, opacity: 0.7, depthWrite: false,
+      side: THREE.DoubleSide, roughness: 0.4,
+    }),
+  };
+}
+
 /**
- * Constrói a malha de UM chunk (face culling), em coordenadas de mundo.
- * Faces de borda consultam o vizinho via world.getBlock (gera sob demanda).
+ * Constrói as malhas de UM chunk (face culling), em coordenadas de mundo.
+ * Retorna geometrias separadas: `opaque` (sólidos, com atlas) e `water`
+ * (passe transparente). Faces de borda consultam o vizinho via world.getBlock.
+ *
  * @param {World} world
  * @param {number} cx @param {number} cz
- * @param {THREE.Material} [material]
- * @returns {THREE.Mesh}
+ * @param {{opaque:THREE.Material, water:THREE.Material}} [materials]
+ * @returns {{opaque: THREE.Mesh, water: THREE.Mesh|null}}
  */
-export function buildChunkMesh(world, cx, cz, material) {
-  const positions = [];
-  const normals = [];
-  const colors = [];
-  const uvs = [];
-  const indices = [];
+export function buildChunkMesh(world, cx, cz, materials) {
+  const mats = materials || defaultMaterials();
+  // opaco
+  const oPos = [], oNorm = [], oCol = [], oUv = [], oIdx = [];
+  // água
+  const wPos = [], wNorm = [], wCol = [], wIdx = [];
   const baseX = cx * CHUNK_SIZE;
   const baseZ = cz * CHUNK_SIZE;
+  const waterC = new THREE.Color(BLOCK_COLOR[BLOCK.WATER]);
 
   for (let y = 0; y < WORLD_HEIGHT; y++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -229,45 +246,72 @@ export function buildChunkMesh(world, cx, cz, material) {
         const bx = baseX + lx;
         const bz = baseZ + lz;
         const block = world.getBlock(bx, y, bz);
-        if (!isSolid(block)) continue;
+        if (block === BLOCK.AIR) continue;
 
+        if (block === BLOCK.WATER) {
+          // água: face só contra AR (superfície e bordas expostas)
+          for (const face of FACES) {
+            const [dx, dy, dz] = face.dir;
+            if (world.getBlock(bx + dx, y + dy, bz + dz) !== BLOCK.AIR) continue;
+            const ndx = wPos.length / 3;
+            const s = face.shade;
+            for (let k = 0; k < 4; k++) {
+              const [ox, oy, oz] = face.corners[k];
+              wPos.push(bx + ox, y + oy, bz + oz);
+              wNorm.push(dx, dy, dz);
+              wCol.push(waterC.r * s, waterC.g * s, waterC.b * s);
+            }
+            wIdx.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
+          }
+          continue;
+        }
+
+        // sólido: face desenhada se o vizinho não é sólido (inclui água -> vê o fundo)
         for (const face of FACES) {
           const [dx, dy, dz] = face.dir;
           if (isSolid(world.getBlock(bx + dx, y + dy, bz + dz))) continue;
 
-          const ndx = positions.length / 3;
+          const ndx = oPos.length / 3;
           const s = face.shade;
           const rect = uvForTile(tileFor(block, face.name));
-
           for (let k = 0; k < 4; k++) {
             const [ox, oy, oz] = face.corners[k];
-            positions.push(bx + ox, y + oy, bz + oz);
-            normals.push(dx, dy, dz);
-            colors.push(s, s, s);
+            oPos.push(bx + ox, y + oy, bz + oz);
+            oNorm.push(dx, dy, dz);
+            oCol.push(s, s, s);
             const [lu, lv] = face.uv[k];
-            uvs.push(rect.u0 + lu * (rect.u1 - rect.u0), rect.v0 + lv * (rect.v1 - rect.v0));
+            oUv.push(rect.u0 + lu * (rect.u1 - rect.u0), rect.v0 + lv * (rect.v1 - rect.v0));
           }
-          indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
+          oIdx.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
         }
       }
     }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeBoundingSphere();
+  const og = new THREE.BufferGeometry();
+  og.setAttribute('position', new THREE.Float32BufferAttribute(oPos, 3));
+  og.setAttribute('normal', new THREE.Float32BufferAttribute(oNorm, 3));
+  og.setAttribute('color', new THREE.Float32BufferAttribute(oCol, 3));
+  og.setAttribute('uv', new THREE.Float32BufferAttribute(oUv, 2));
+  og.setIndex(oIdx);
+  og.computeBoundingSphere();
+  const opaque = new THREE.Mesh(og, mats.opaque);
+  opaque.name = 'chunk:' + chunkKey(cx, cz);
+  opaque.userData.cx = cx;
+  opaque.userData.cz = cz;
 
-  const mat =
-    material ||
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0.0 });
+  let water = null;
+  if (wPos.length > 0) {
+    const wg = new THREE.BufferGeometry();
+    wg.setAttribute('position', new THREE.Float32BufferAttribute(wPos, 3));
+    wg.setAttribute('normal', new THREE.Float32BufferAttribute(wNorm, 3));
+    wg.setAttribute('color', new THREE.Float32BufferAttribute(wCol, 3));
+    wg.setIndex(wIdx);
+    wg.computeBoundingSphere();
+    water = new THREE.Mesh(wg, mats.water);
+    water.name = 'water:' + chunkKey(cx, cz);
+    water.renderOrder = 1; // desenha depois do opaco
+  }
 
-  const mesh = new THREE.Mesh(geometry, mat);
-  mesh.name = 'chunk:' + chunkKey(cx, cz);
-  mesh.userData.cx = cx;
-  mesh.userData.cz = cz;
-  return mesh;
+  return { opaque, water };
 }

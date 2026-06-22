@@ -11,6 +11,7 @@ export const BLOCK = {
   LEAVES: 6,
   PLANKS: 7,
   COBBLE: 8,
+  WATER: 9,
 };
 
 // Cor base por tipo (hex). Usada na hotbar e como base do atlas procedural.
@@ -23,8 +24,13 @@ export const BLOCK_COLOR = {
   [BLOCK.LEAVES]: 0x4a8b3a,
   [BLOCK.PLANKS]: 0xb9925a,
   [BLOCK.COBBLE]: 0x7a7a80,
+  [BLOCK.WATER]: 0x3a7ec0,
 };
 
+/**
+ * Bloco "sólido" para fins de colisão e face culling.
+ * Água conta como NÃO-sólida: não colide e não oculta as faces dos vizinhos.
+ */
 export function isSolid(block) {
-  return block !== BLOCK.AIR && block !== undefined;
+  return block !== BLOCK.AIR && block !== BLOCK.WATER && block !== undefined;
 }

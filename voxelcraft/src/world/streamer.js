@@ -14,12 +14,12 @@ import {
  * @param {object} opts
  * @param {import('./world.js').World} opts.world
  * @param {import('three').Scene} opts.scene
- * @param {import('three').Material} opts.material
+ * @param {{opaque:import('three').Material, water:import('three').Material}} opts.materials
  * @param {number} opts.radius   raio (em chunks) com malha visível
  * @param {number} [opts.budget] chunks construídos por frame (streaming)
  */
-export function createStreamer({ world, scene, material, radius, budget = 2 }) {
-  const meshes = new Map(); // key -> Mesh
+export function createStreamer({ world, scene, materials, radius, budget = 2 }) {
+  const chunks = new Map(); // key -> { opaque, water }
   const queue = []; // [cx,cz] pendentes de construção
   const queued = new Set();
   let lastPcx = null;
@@ -27,18 +27,23 @@ export function createStreamer({ world, scene, material, radius, budget = 2 }) {
 
   function buildChunk(cx, cz) {
     const key = chunkKey(cx, cz);
-    if (meshes.has(key)) return;
-    const mesh = buildChunkMesh(world, cx, cz, material);
-    meshes.set(key, mesh);
-    scene.add(mesh);
+    if (chunks.has(key)) return;
+    const built = buildChunkMesh(world, cx, cz, materials);
+    chunks.set(key, built);
+    scene.add(built.opaque);
+    if (built.water) scene.add(built.water);
   }
 
   function disposeMesh(key) {
-    const mesh = meshes.get(key);
-    if (!mesh) return;
-    scene.remove(mesh);
-    mesh.geometry.dispose();
-    meshes.delete(key);
+    const built = chunks.get(key);
+    if (!built) return;
+    scene.remove(built.opaque);
+    built.opaque.geometry.dispose();
+    if (built.water) {
+      scene.remove(built.water);
+      built.water.geometry.dispose();
+    }
+    chunks.delete(key);
   }
 
   // Recalcula o conjunto desejado quando o jogador troca de chunk.
@@ -47,7 +52,7 @@ export function createStreamer({ world, scene, material, radius, budget = 2 }) {
     for (let cx = pcx - radius; cx <= pcx + radius; cx++) {
       for (let cz = pcz - radius; cz <= pcz + radius; cz++) {
         const key = chunkKey(cx, cz);
-        if (!meshes.has(key) && !queued.has(key)) {
+        if (!chunks.has(key) && !queued.has(key)) {
           queue.push([cx, cz]);
           queued.add(key);
         }
@@ -60,7 +65,7 @@ export function createStreamer({ world, scene, material, radius, budget = 2 }) {
     });
 
     // descarrega malhas fora do raio
-    for (const key of [...meshes.keys()]) {
+    for (const key of [...chunks.keys()]) {
       const [cx, cz] = parseKey(key);
       if (Math.max(Math.abs(cx - pcx), Math.abs(cz - pcz)) > radius) disposeMesh(key);
     }
@@ -112,16 +117,17 @@ export function createStreamer({ world, scene, material, radius, budget = 2 }) {
     if (lz === CHUNK_SIZE - 1) targets.add(chunkKey(cx, cz + 1));
 
     for (const key of targets) {
-      if (!meshes.has(key)) continue; // fora da área visível: será construído ao entrar
+      if (!chunks.has(key)) continue; // fora da área visível: será construído ao entrar
       disposeMesh(key);
       const [tcx, tcz] = parseKey(key);
       buildChunk(tcx, tcz);
     }
   }
 
+  // só os meshes opacos entram no raycast de edição (a água é ignorada).
   function getMeshes() {
-    return [...meshes.values()];
+    return [...chunks.values()].map((c) => c.opaque);
   }
 
-  return { update, rebuildAround, getMeshes, meshes };
+  return { update, rebuildAround, getMeshes };
 }

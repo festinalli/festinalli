@@ -49,11 +49,11 @@ test('setBlock grava e marca o chunk como modificado', () => {
   assert.equal(w.isModified(99, 99), false);
 });
 
-test('buildChunkMesh gera geometria não-vazia com uv casando', () => {
+test('buildChunkMesh gera geometria opaca não-vazia com uv casando', () => {
   const w = new World(1337);
-  const mesh = buildChunkMesh(w, 0, 0);
-  const pos = mesh.geometry.getAttribute('position').count;
-  const uv = mesh.geometry.getAttribute('uv').count;
+  const { opaque } = buildChunkMesh(w, 0, 0);
+  const pos = opaque.geometry.getAttribute('position').count;
+  const uv = opaque.geometry.getAttribute('uv').count;
   assert.ok(pos > 0);
   assert.equal(uv, pos);
 });
