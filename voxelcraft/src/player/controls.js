@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { collidesAABB } from './collision.js';
+import { sweepAxis, moveHorizontalWithStep } from './movement.js';
 // `world` expõe getBlock(bx,by,bz) em coordenadas globais.
 
 // Constantes de movimento (fonte única).
@@ -10,7 +10,6 @@ const FLY_SPEED = 14; // horizontal em modo voo
 const FLY_VERTICAL = 12; // subir/descer em modo voo
 const GRAVITY = 28; // blocos/s²
 const JUMP_SPEED = 9; // impulso do pulo
-const MAX_STEP = 0.2; // subdivisão do movimento (anti-tunneling)
 
 /**
  * Câmera/jogador em 1ª pessoa: pointer lock para olhar; WASD para andar;
@@ -71,25 +70,7 @@ export function createControls(camera, domElement, world) {
   const rightDir = new THREE.Vector3();
   const move = new THREE.Vector3();
   const worldUp = new THREE.Vector3(0, 1, 0);
-
-  // Move a câmera em um eixo, subdividido, revertendo o passo que colidir.
-  // Retorna true se algum passo foi bloqueado.
-  function moveAxis(axis, amount) {
-    if (amount === 0) return false;
-    const steps = Math.max(1, Math.ceil(Math.abs(amount) / MAX_STEP));
-    const step = amount / steps;
-    let blocked = false;
-    for (let i = 0; i < steps; i++) {
-      const prev = camera.position[axis];
-      camera.position[axis] += step;
-      if (collidesAABB(world, camera.position.x, camera.position.y, camera.position.z)) {
-        camera.position[axis] = prev;
-        blocked = true;
-        break;
-      }
-    }
-    return blocked;
-  }
+  const pos = { x: 0, y: 0, z: 0 };
 
   function update(dt) {
     if (!controls.isLocked) return;
@@ -107,20 +88,27 @@ export function createControls(camera, domElement, world) {
     if (keys.left) move.sub(rightDir);
     if (move.lengthSq() > 0) move.normalize();
 
+    pos.x = camera.position.x;
+    pos.y = camera.position.y;
+    pos.z = camera.position.z;
+
     const hSpeed = (flyMode ? FLY_SPEED : WALK_SPEED) * (keys.run ? RUN_MULT : 1);
-    moveAxis('x', move.x * hSpeed * dt);
-    moveAxis('z', move.z * hSpeed * dt);
+    const dx = move.x * hSpeed * dt;
+    const dz = move.z * hSpeed * dt;
 
     if (flyMode) {
+      sweepAxis(world, pos, 'x', dx);
+      sweepAxis(world, pos, 'z', dz);
       velY = 0;
       onGround = false;
       let dy = 0;
       if (keys.up) dy += FLY_VERTICAL * dt;
       if (keys.down) dy -= FLY_VERTICAL * dt;
-      moveAxis('y', dy);
+      sweepAxis(world, pos, 'y', dy);
     } else {
+      moveHorizontalWithStep(world, pos, dx, dz, onGround);
       velY -= GRAVITY * dt;
-      const blocked = moveAxis('y', velY * dt);
+      const blocked = sweepAxis(world, pos, 'y', velY * dt);
       if (blocked) {
         if (velY < 0) onGround = true;
         velY = 0;
@@ -128,6 +116,8 @@ export function createControls(camera, domElement, world) {
         onGround = false;
       }
     }
+
+    camera.position.set(pos.x, pos.y, pos.z);
   }
 
   return { controls, update };

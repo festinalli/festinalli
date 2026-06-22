@@ -49,7 +49,7 @@ Quanto o agente corre sozinho entre pausas humanas. Definido por você:
 | #   | Feature                                   | Status         |
 |-----|-------------------------------------------|----------------|
 | 008 | Testes (node:test) + CI                   | ✅ Feito        |
-| 009 | Step-up de colisão (subir 1 bloco)        | ⏳ Próxima      |
+| 009 | Step-up de colisão (subir 1 bloco)        | ✅ Feito        |
 | 010 | Árvores na geração (cross-chunk)          | ⏳ Planejado    |
 | 011 | Água (nível do mar + transparência)       | ⏳ Planejado    |
 | 012 | Ciclo dia/noite                           | ⏳ Planejado    |
