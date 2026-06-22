@@ -44,4 +44,16 @@ Quanto o agente corre sozinho entre pausas humanas. Definido por você:
 | 006 | Streaming de chunks (mundo "infinito")    | ✅ Feito (validação manual pendente) |
 | 007 | Hotbar / inventário                       | ✅ Feito (validação manual pendente) |
 
+### Fase 2 — melhorias (rigor + UX + visual + gameplay + imersão)
+
+| #   | Feature                                   | Status         |
+|-----|-------------------------------------------|----------------|
+| 008 | Testes (node:test) + CI                   | ✅ Feito        |
+| 009 | Step-up de colisão (subir 1 bloco)        | ⏳ Próxima      |
+| 010 | Árvores na geração (cross-chunk)          | ⏳ Planejado    |
+| 011 | Água (nível do mar + transparência)       | ⏳ Planejado    |
+| 012 | Ciclo dia/noite                           | ⏳ Planejado    |
+| 013 | Drops + inventário com quantidades        | ⏳ Planejado    |
+| 014 | Sons procedurais                          | ⏳ Planejado    |
+
 Legenda: ✅ feito · 🔨 em progresso · ⏳ planejado
