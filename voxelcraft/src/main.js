@@ -7,6 +7,7 @@ import { createEditing, HOTBAR } from './player/editing.js';
 import { makeInventory, fromJSON as fromInventoryJSON, toJSON as invToJSON, count as invCount } from './player/inventory.js';
 import { makeAtlasTexture } from './world/atlas.js';
 import { skyState } from './world/daynight.js';
+import { createSound } from './audio/sound.js';
 import { loadWorld, saveWorld, clearWorld } from './world/persistence.js';
 import { BLOCK_COLOR } from './blocks.js';
 
@@ -130,8 +131,13 @@ camera.lookAt(camera.position.x + 12, camera.position.y - 1, camera.position.z +
 // Constrói os chunks próximos de uma vez (escondido atrás do overlay).
 streamer.update(camera.position, true);
 
+// --- Áudio procedural ---
+const sound = createSound();
+
 // --- Controles ---
-const { controls, update } = createControls(camera, renderer.domElement, world);
+const { controls, update } = createControls(camera, renderer.domElement, world, {
+  onStep: () => sound.playStep(),
+});
 scene.add(controls.object); // PointerLockControls move este objeto (a câmera)
 
 const overlay = document.getElementById('overlay');
@@ -153,6 +159,13 @@ const editing = createEditing({
   onEdit: scheduleSave,
   inventory,
   onInventoryChange: () => renderHotbar(),
+  onBreak: () => sound.playBreak(),
+  onPlace: () => sound.playPlace(),
+});
+
+// Mute liga/desliga (M)
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM') sound.toggle();
 });
 
 // HUD da hotbar: cor do bloco + número da tecla + quantidade; destaca o selecionado.
@@ -174,6 +187,7 @@ controls.addEventListener('lock', () => {
   crosshair.classList.remove('hidden');
   hud.classList.remove('hidden');
   hotbar.classList.remove('hidden');
+  sound.resume(); // AudioContext só após gesto do usuário
 });
 controls.addEventListener('unlock', () => {
   overlay.classList.remove('hidden');

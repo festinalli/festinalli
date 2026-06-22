@@ -18,9 +18,12 @@ const JUMP_SPEED = 9; // impulso do pulo
  * @param {THREE.Camera} camera
  * @param {HTMLElement} domElement
  * @param {import('../world/world.js').World} world
+ * @param {{onStep?: () => void}} [opts]
  */
-export function createControls(camera, domElement, world) {
+export function createControls(camera, domElement, world, opts = {}) {
   const controls = new PointerLockControls(camera, domElement);
+  const STRIDE = 2.4; // distância (blocos) entre passos
+  let walkAccum = 0;
 
   const keys = {
     forward: false, backward: false, left: false, right: false,
@@ -106,6 +109,9 @@ export function createControls(camera, domElement, world) {
       if (keys.down) dy -= FLY_VERTICAL * dt;
       sweepAxis(world, pos, 'y', dy);
     } else {
+      const sx = pos.x;
+      const sz = pos.z;
+      const wasGround = onGround;
       moveHorizontalWithStep(world, pos, dx, dz, onGround);
       velY -= GRAVITY * dt;
       const blocked = sweepAxis(world, pos, 'y', velY * dt);
@@ -114,6 +120,15 @@ export function createControls(camera, domElement, world) {
         velY = 0;
       } else {
         onGround = false;
+      }
+      // passos: acumula distância andada no chão
+      if (wasGround) {
+        const moved = Math.hypot(pos.x - sx, pos.z - sz);
+        walkAccum += moved;
+        if (walkAccum >= STRIDE) {
+          walkAccum = 0;
+          opts.onStep?.();
+        }
       }
     }
 

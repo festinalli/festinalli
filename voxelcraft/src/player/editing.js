@@ -51,6 +51,7 @@ export function createEditing(opts) {
   const {
     camera, scene, world, getMeshes, rebuildAround,
     isLocked, getPlayerPos, onSelect, onEdit, inventory, onInventoryChange,
+    onBreak, onPlace,
   } = opts;
 
   const raycaster = new THREE.Raycaster();
@@ -119,6 +120,7 @@ export function createEditing(opts) {
         addBlock(inventory, broken, 1);
         onInventoryChange?.();
       }
+      onBreak?.(broken);
       onEdit?.();
     } else if (e.button === 2) {
       // colocar: consome 1 do selecionado (precisa ter no inventário)
@@ -133,6 +135,7 @@ export function createEditing(opts) {
       }
       world.setBlock(p.x, p.y, p.z, block);
       rebuildAround(p.x, p.z);
+      onPlace?.(block);
       onEdit?.();
     }
   }
