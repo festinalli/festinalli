@@ -8,8 +8,11 @@ export const CHUNK_SIZE = 16; // blocos por lado (X e Z) de um chunk
 export const WORLD_HEIGHT = 48; // altura finita do mundo (Y)
 
 const BASE_HEIGHT = 8; // piso mínimo do terreno
-const WATER_LEVEL = 10; // colunas baixas ganham areia no topo
+export const WATER_LEVEL = 10; // colunas baixas ganham areia no topo
 const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT;
+
+const TREE_DENSITY = 0.025; // chance por coluna de nascer uma árvore
+const TREE_MARGIN = 2; // raio horizontal da copa (p/ stamping cross-chunk)
 
 // --- Conversão de coordenadas (PURAS) ---
 export const chunkCoord = (b) => Math.floor(b / CHUNK_SIZE);
@@ -19,6 +22,64 @@ export const parseKey = (key) => key.split(',').map(Number);
 
 // índice de (lx, y, lz) dentro do array de um chunk
 const idx = (lx, y, lz) => lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
+
+// hash determinístico -> [0,1) a partir de (x, z, seed, salt).
+function hash01(x, z, seed, salt) {
+  let h = (x | 0) * 374761393 + (z | 0) * 668265263 + (seed | 0) * 2147483647 + (salt | 0) * 40499;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// altura do terreno (índice do bloco de topo) numa coluna, via ruído.
+function columnHeight(noise, wx, wz) {
+  const n01 = (noise(wx, wz) + 1) / 2;
+  return Math.max(
+    1,
+    Math.min(WORLD_HEIGHT - 1, Math.floor(BASE_HEIGHT + n01 * (WORLD_HEIGHT - BASE_HEIGHT - 8)))
+  );
+}
+
+/** Altura do terreno numa coluna (cria o ruído; conveniência p/ testes). */
+export function terrainHeight(seed, wx, wz) {
+  return columnHeight(makeNoise2D(seed), wx, wz);
+}
+
+/** Nasce uma árvore nesta coluna? (determinístico) */
+export function hasTree(seed, wx, wz) {
+  return hash01(wx, wz, seed, 777) < TREE_DENSITY;
+}
+
+// escreve um bloco no chunk se a coordenada global cair dentro dele.
+function setLocal(data, baseX, baseZ, bx, by, bz, block, onlyAir) {
+  const lx = bx - baseX;
+  const lz = bz - baseZ;
+  if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE || by < 0 || by >= WORLD_HEIGHT) return;
+  const i = idx(lx, by, lz);
+  if (onlyAir && data[i] !== BLOCK.AIR) return;
+  data[i] = block;
+}
+
+// "carimba" uma árvore (tronco + copa) cuja origem é (wx,wz); cada chunk grava
+// apenas a parte que cai nele -> consistente entre chunks (cross-chunk seamless).
+function stampTree(data, baseX, baseZ, seed, wx, wz, groundH) {
+  const trunkH = 4 + Math.floor(hash01(wx, wz, seed, 999) * 3); // 4..6
+  const topY = groundH + trunkH;
+  for (let y = groundH + 1; y <= topY; y++) {
+    setLocal(data, baseX, baseZ, wx, y, wz, BLOCK.WOOD, false);
+  }
+  // copa: camadas mais largas embaixo, cantos arredondados
+  for (let dy = -2; dy <= 1; dy++) {
+    const y = topY + dy;
+    const r = dy >= 0 ? 1 : 2;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        if (Math.abs(dx) === r && Math.abs(dz) === r) continue; // tira cantos
+        setLocal(data, baseX, baseZ, wx + dx, y, wz + dz, BLOCK.LEAVES, true);
+      }
+    }
+  }
+}
 
 /**
  * Gera os blocos de um chunk de forma determinística (PURO).
@@ -32,15 +93,10 @@ export function generateChunk(seed, cx, cz) {
   const baseX = cx * CHUNK_SIZE;
   const baseZ = cz * CHUNK_SIZE;
 
+  // 1) terreno por altura
   for (let lx = 0; lx < CHUNK_SIZE; lx++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
-      const wx = baseX + lx;
-      const wz = baseZ + lz;
-      const n01 = (noise(wx, wz) + 1) / 2; // [0,1]
-      const height = Math.max(
-        1,
-        Math.min(WORLD_HEIGHT - 1, Math.floor(BASE_HEIGHT + n01 * (WORLD_HEIGHT - BASE_HEIGHT - 8)))
-      );
+      const height = columnHeight(noise, baseX + lx, baseZ + lz);
       for (let y = 0; y <= height; y++) {
         let block;
         if (y === height) block = height <= WATER_LEVEL ? BLOCK.SAND : BLOCK.GRASS;
@@ -50,6 +106,19 @@ export function generateChunk(seed, cx, cz) {
       }
     }
   }
+
+  // 2) árvores (origens dentro de uma margem -> copa cruza fronteiras sem cortar)
+  for (let ox = -TREE_MARGIN; ox < CHUNK_SIZE + TREE_MARGIN; ox++) {
+    for (let oz = -TREE_MARGIN; oz < CHUNK_SIZE + TREE_MARGIN; oz++) {
+      const wx = baseX + ox;
+      const wz = baseZ + oz;
+      if (!hasTree(seed, wx, wz)) continue;
+      const h = columnHeight(noise, wx, wz);
+      if (h <= WATER_LEVEL) continue; // só em terra (acima da praia/água)
+      stampTree(data, baseX, baseZ, seed, wx, wz, h);
+    }
+  }
+
   return data;
 }
 
