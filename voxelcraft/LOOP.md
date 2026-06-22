@@ -52,7 +52,7 @@ Quanto o agente corre sozinho entre pausas humanas. Definido por você:
 | 009 | Step-up de colisão (subir 1 bloco)        | ✅ Feito        |
 | 010 | Árvores na geração (cross-chunk)          | ✅ Feito        |
 | 011 | Água (nível do mar + transparência)       | ✅ Feito        |
-| 012 | Ciclo dia/noite                           | ⏳ Planejado    |
+| 012 | Ciclo dia/noite                           | ✅ Feito        |
 | 013 | Drops + inventário com quantidades        | ⏳ Planejado    |
 | 014 | Sons procedurais                          | ⏳ Planejado    |
 

@@ -5,6 +5,7 @@ import { PLAYER } from './player/collision.js';
 import { createControls } from './player/controls.js';
 import { createEditing, HOTBAR } from './player/editing.js';
 import { makeAtlasTexture } from './world/atlas.js';
+import { skyState } from './world/daynight.js';
 import { loadWorld, saveWorld, clearWorld } from './world/persistence.js';
 import { BLOCK_COLOR } from './blocks.js';
 
@@ -33,12 +34,27 @@ const camera = new THREE.PerspectiveCamera(
   VIEW + CHUNK_SIZE * 2
 );
 
-// --- Luzes ---
+// --- Luzes (intensidades/cores controladas pelo ciclo dia/noite) ---
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 sun.position.set(40, 80, 20);
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x4a5a3a, 0.7));
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+const hemiLight = new THREE.HemisphereLight(0xcfe8ff, 0x4a5a3a, 0.7);
+scene.add(hemiLight);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+scene.add(ambientLight);
+
+// --- Ciclo dia/noite ---
+const DAY_LENGTH = 120; // segundos para um dia completo
+let dayT = 0.28; // começa de manhã
+function applyDayNight() {
+  const s = skyState(dayT);
+  sun.position.set(s.sunDir.x * 100, s.sunDir.y * 100, s.sunDir.z * 100);
+  sun.intensity = s.sunIntensity;
+  ambientLight.intensity = s.ambient;
+  hemiLight.intensity = s.hemi;
+  scene.background.setRGB(s.sky.r, s.sky.g, s.sky.b, THREE.SRGBColorSpace);
+  scene.fog.color.setRGB(s.fog.r, s.fog.g, s.fog.b, THREE.SRGBColorSpace);
+}
 
 // --- Material (atlas de texturas) ---
 const atlas = makeAtlasTexture();
@@ -180,6 +196,9 @@ function animate() {
   update(dt);
   streamer.update(camera.position); // streaming incremental conforme anda
   editing.updateHighlight();
+
+  dayT = (dayT + dt / DAY_LENGTH) % 1;
+  applyDayNight();
 
   fpsAccum += dt;
   fpsFrames++;
